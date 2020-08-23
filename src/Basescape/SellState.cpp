@@ -66,6 +66,9 @@ namespace OpenXcom
  * @param origin Game section that originated this state.
  */
 SellState::SellState(Base *base, DebriefingState *debriefingState, OptionsOrigin origin) : _base(base), _debriefingState(debriefingState), _sel(0), _total(0), _spaceChange(0), _origin(origin), _reset(false), _sellAllButOne(false)
+#ifdef __MOBILE__
+	, _clickGuard(false)
+#endif
 {
 	bool overfull = _debriefingState == 0 && Options::storageLimitsEnforced && _base->storesOverfull();
 	bool overfullCritical = overfull ? _base->storesOverfullCritical() : false;
@@ -320,6 +323,12 @@ SellState::SellState(Base *base, DebriefingState *debriefingState, OptionsOrigin
 	_timerInc->onTimer((StateHandler)&SellState::increase);
 	_timerDec = new Timer(250);
 	_timerDec->onTimer((StateHandler)&SellState::decrease);
+
+#ifdef __MOBILE__
+	_longPressTimer = new Timer(Options::longPressDuration, false);
+	_longPressTimer->onTimer((StateHandler)&SellState::lstItemsLongPress);
+	_lstItems->onMouseRelease((ActionHandler)&SellState::lstItemsMouseRelease);
+#endif
 }
 
 /**
@@ -329,6 +338,9 @@ SellState::~SellState()
 {
 	delete _timerInc;
 	delete _timerDec;
+#ifdef __MOBILE__
+	delete _longPressTimer;
+#endif
 }
 
 /**
@@ -354,6 +366,10 @@ void SellState::think()
 
 	_timerInc->think(this, 0);
 	_timerDec->think(this, 0);
+#ifdef __MOBILE__
+		_clickGuard = false;
+		_longPressTimer->think(this, 0);
+#endif
 }
 
 /**
@@ -920,6 +936,14 @@ void SellState::lstItemsMousePress(Action *action)
 			}
 		}
 	}
+#ifdef __MOBILE__
+	if (action->getAbsoluteXMouse() >= _lstItems->getArrowsLeftEdge() &&
+		action->getAbsoluteXMouse() <= _lstItems->getArrowsRightEdge())
+	{
+		return;
+	}
+	_longPressTimer->start();
+#endif
 }
 
 void SellState::lstItemsMouseWheel(Action *action)
@@ -938,6 +962,48 @@ void SellState::lstItemsMouseWheel(Action *action)
 		}
 	}
 }
+#ifdef __MOBILE__
+/**
+ * Stops the long-press timer.
+ * @param action Pointer to an action.
+ */
+void SellState::lstItemsMouseRelease(Action *action)
+{
+	_longPressTimer->stop();
+}
+
+/**
+ * Emulates right/midle-clicking.
+ */
+void SellState::lstItemsLongPress()
+{
+	_longPressTimer->stop();
+	_clickGuard = true;
+
+	_sel = _lstItems->getSelectedRow();
+
+	if (getRow().type == TRANSFER_ITEM)
+	{
+		RuleItem *rule = (RuleItem*)getRow().rule;
+		if (rule != 0)
+		{
+			_game->pushState(new ManufactureDependenciesTreeState(rule->getType()));
+		}
+	}
+
+	else if (getRow().type == TRANSFER_CRAFT)
+	{
+		Craft *rule = (Craft*)getRow().rule;
+		if (rule != 0)
+		{
+			std::string articleId = rule->getRules()->getType();
+			Ufopaedia::openArticle(_game, articleId);
+		}
+	}
+
+}
+#endif
+
 
 /**
  * Increases the quantity of the selected item to sell by one.

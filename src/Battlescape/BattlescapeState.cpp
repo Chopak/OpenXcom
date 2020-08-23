@@ -1042,35 +1042,51 @@ void BattlescapeState::mapRelease(Action *action)
 
 #ifdef __MOBILE__
 /**
-* Handles long presses to turn the soldier.
+* Handles long presses to turn the soldier or open alienInventory.
 */
-void BattlescapeState::mapLongPress()
-{
-	// Stop the timer first.
-	_longPressTimer->stop();
-	// If the event fired while the camera was moving,
-	// then we don't want to handle it.
-	if (_mouseMovedOverThreshold)
+	void BattlescapeState::mapLongPress()
 	{
-		return;
-	}
-	// Do nothing if this method of turning is disabled.
-	if (!Options::holdToTurn)
-	{
-		return;
-	}
-	// Proceed with turning the unit.
-	Position pos;
-	BattleUnit *selectedUnit = _save->getSelectedUnit();
-	_map->getSelectorPosition(&pos);
-	if (selectedUnit)
-	{
-		if (pos != selectedUnit->getPosition())
+		// Stop the timer first.
+		_longPressTimer->stop();
+		// If the event fired while the camera was moving,
+		// then we don't want to handle it.
+		if (_mouseMovedOverThreshold)
 		{
-			_battleGame->secondaryAction(pos);
+			return;
+		}
+
+
+		//Check if pressed over a unit
+		Position pos;
+		_map->getSelectorPosition(&pos);
+
+		_battleGame->cancelCurrentAction();
+		BattleUnit *bu = _save->selectUnit(pos);
+		if (bu && (bu->getVisible() || _save->getDebugMode()))
+		{
+			_game->pushState(new AlienInventoryState(bu));
+
+		}
+		else
+		{
+			// Do nothing if this method of turning is disabled.
+			if (!Options::holdToTurn)
+			{
+				return;
+			}
+			// Proceed with turning the unit.
+
+			BattleUnit *selectedUnit = _save->getSelectedUnit();
+			_map->getSelectorPosition(&pos);
+			if (selectedUnit)
+			{
+				if (pos != selectedUnit->getPosition())
+				{
+					_battleGame->secondaryAction(pos);
+				}
+			}
 		}
 	}
-}
 #endif
 
 /**
