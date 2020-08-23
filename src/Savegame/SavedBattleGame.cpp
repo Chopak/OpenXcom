@@ -1077,15 +1077,20 @@ int SavedBattleGame::getBughuntMinTurn() const
  */
 void SavedBattleGame::startFirstTurn()
 {
+	// this should be first tile with all items, even if unit is in reality on other tile.
+	Tile *inventoryTile = getSelectedUnit()->getTile();
+
+	randomizeItemLocations(inventoryTile);
+
 	resetUnitTiles();
 
-	Tile *inventoryTile = getSelectedUnit()->getTile();
-	randomizeItemLocations(inventoryTile);
+	// check what unit is still on this tile after reset.
 	if (inventoryTile->getUnit())
 	{
 		// make sure we select the unit closest to the ramp.
 		setSelectedUnit(inventoryTile->getUnit());
 	}
+
 
 	// initialize xcom units for battle
 	for (auto u : *getUnits())
@@ -2800,6 +2805,18 @@ void getGeoscapeSaveScript(SavedBattleGame* sbg, SavedGame*& val)
 	}
 }
 
+void getTileScript(const SavedBattleGame* sbg, const Tile*& t, int x, int y, int z)
+{
+	if (sbg)
+	{
+		t = sbg->getTile(Position(x, y, z));
+	}
+	else
+	{
+		t = nullptr;
+	}
+}
+
 void tryConcealUnitScript(SavedBattleGame* sbg, BattleUnit* bu, int& val)
 {
 	if (sbg && bu)
@@ -2843,6 +2860,7 @@ void SavedBattleGame::ScriptRegister(ScriptParserBase* parser)
 
 	sbg.add<&SavedBattleGame::getTurn>("getTurn");
 	sbg.add<&SavedBattleGame::getAnimFrame>("getAnimFrame");
+	sbg.add<&getTileScript>("getTile", "Get tile on position x, y, z");
 
 	sbg.addPair<SavedGame, &getGeoscapeSaveScript, &getGeoscapeSaveScript>("getGeoscapeGame");
 

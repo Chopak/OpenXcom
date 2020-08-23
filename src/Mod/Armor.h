@@ -70,9 +70,12 @@ private:
 	const RuleItem* _storeItem = nullptr;
 	const RuleItem* _specWeapon = nullptr;
 
+	bool _infiniteSupply;
 	int _frontArmor, _sideArmor, _leftArmorDiff, _rearArmor, _underArmor, _drawingRoutine;
 	bool _drawBubbles;
 	MovementType _movementType;
+	bool _turnBeforeFirstStep;
+	int _turnCost;
 	int _moveSound;
 	std::vector<int> _deathSoundMale, _deathSoundFemale;
 	std::vector<int> _selectUnitSoundMale, _selectUnitSoundFemale;
@@ -112,6 +115,8 @@ public:
 	void load(const YAML::Node& node, const ModScript& parsers, Mod *mod);
 	/// Cross link with other rules.
 	void afterLoad(const Mod* mod);
+	/// Gets whether or not there is an infinite supply of this armor.
+	bool hasInfiniteSupply() const { return _infiniteSupply; }
 
 	/// Gets the armor's type.
 	const std::string& getType() const;
@@ -155,6 +160,12 @@ public:
 	bool drawBubbles() const;
 	/// DO NOT USE THIS FUNCTION OUTSIDE THE BATTLEUNIT CONSTRUCTOR OR I WILL HUNT YOU DOWN.
 	MovementType getMovementType() const;
+
+	/// Should turning before first step cost TU or not?
+	bool getTurnBeforeFirstStep() const { return _turnBeforeFirstStep; }
+	/// Gets the turn cost.
+	int getTurnCost() const { return _turnCost; }
+
 	/// Gets the move sound id. Overrides default/unit's move sound. To be used in BattleUnit constructors only too!
 	int getMoveSound() const;
 	/// Gets the male death sounds.
@@ -290,7 +301,7 @@ public:
 
 	/// Gets the armor's units.
 	const std::vector<const RuleSoldier*> &getUnits() const;
-	/// Check if soldier can use this armor.
+	/// Check if a soldier can use this armor.
 	bool getCanBeUsedBy(const RuleSoldier* soldier) const;
 
 

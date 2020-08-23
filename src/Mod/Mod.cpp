@@ -144,7 +144,6 @@ int Mod::FIRE_DAMAGE_RANGE[2];
 std::string Mod::DEBRIEF_MUSIC_GOOD;
 std::string Mod::DEBRIEF_MUSIC_BAD;
 int Mod::DIFFICULTY_COEFFICIENT[5];
-int Mod::DIFFICULTY_BASED_RETAL_DELAY[5];
 int Mod::UNIT_RESPONSE_SOUNDS_FREQUENCY[4];
 bool Mod::EXTENDED_ITEM_RELOAD_COST;
 bool Mod::EXTENDED_RUNNING_COST;
@@ -217,12 +216,6 @@ void Mod::resetGlobalStatics()
 	DIFFICULTY_COEFFICIENT[2] = 2;
 	DIFFICULTY_COEFFICIENT[3] = 3;
 	DIFFICULTY_COEFFICIENT[4] = 4;
-
-	DIFFICULTY_BASED_RETAL_DELAY[0] = 0;
-	DIFFICULTY_BASED_RETAL_DELAY[1] = 0;
-	DIFFICULTY_BASED_RETAL_DELAY[2] = 0;
-	DIFFICULTY_BASED_RETAL_DELAY[3] = 0;
-	DIFFICULTY_BASED_RETAL_DELAY[4] = 0;
 
 	UNIT_RESPONSE_SOUNDS_FREQUENCY[0] = 100; // select unit
 	UNIT_RESPONSE_SOUNDS_FREQUENCY[1] = 100; // start moving
@@ -355,7 +348,7 @@ Mod::Mod() :
 	_hidePediaInfoButton(false), _extraNerdyPediaInfo(false),
 	_giveScoreAlsoForResearchedArtifacts(false), _statisticalBulletConservation(false), _stunningImprovesMorale(false),
 	_tuRecoveryWakeUpNewTurn(100), _shortRadarRange(0), _buildTimeReductionScaling(100),
-	_defeatScore(0), _defeatFunds(0), _startingTime(6, 1, 1, 1999, 12, 0, 0), _startingDifficulty(0),
+	_defeatScore(0), _defeatFunds(0), _difficultyDemigod(false), _startingTime(6, 1, 1, 1999, 12, 0, 0), _startingDifficulty(0),
 	_baseDefenseMapFromLocation(0), _disableUnderwaterSounds(false), _enableUnitResponseSounds(false), _pediaReplaceCraftFuelWithRangeType(-1),
 	_facilityListOrder(0), _craftListOrder(0), _itemCategoryListOrder(0), _itemListOrder(0),
 	_researchListOrder(0),  _manufactureListOrder(0), _soldierBonusListOrder(0), _transformationListOrder(0), _ufopaediaListOrder(0), _invListOrder(0), _soldierListOrder(0),
@@ -946,33 +939,6 @@ Palette *Mod::getPalette(const std::string &name, bool error) const
 }
 
 /**
- * Changes the palette of all the graphics in the mod.
- * @param colors Pointer to the set of colors.
- * @param firstcolor Offset of the first color to replace.
- * @param ncolors Amount of colors to replace.
- */
-void Mod::setPaletteForAllResources(const SDL_Color *colors, int firstcolor, int ncolors)
-{
-	_statePalette = colors;
-	for (std::map<std::string, Font*>::iterator i = _fonts.begin(); i != _fonts.end(); ++i)
-	{
-		i->second->setPalette(colors, firstcolor, ncolors);
-	}
-	for (std::map<std::string, Surface*>::iterator i = _surfaces.begin(); i != _surfaces.end(); ++i)
-	{
-		if (CrossPlatform::compareExt(i->first, "LBM"))
-			continue;
-		if (i->first.find("_CPAL") != std::string::npos)
-			continue;
-		i->second->setPalette(colors, firstcolor, ncolors);
-	}
-	for (std::map<std::string, SurfaceSet*>::iterator i = _sets.begin(); i != _sets.end(); ++i)
-	{
-		i->second->setPalette(colors, firstcolor, ncolors);
-	}
-}
-
-/**
  * Returns the list of voxeldata in the mod.
  * @return Pointer to the list of voxeldata.
  */
@@ -1018,16 +984,19 @@ int Mod::getModOffset() const
 namespace
 {
 
+const std::string YamlTagSeqShort = "!!seq";
 const std::string YamlTagSeq = "tag:yaml.org,2002:seq";
+const std::string YamlTagMapShort = "!!map";
 const std::string YamlTagMap = "tag:yaml.org,2002:map";
 const std::string YamlTagNonSpecific = "?";
 
+const std::string InfoTag = "!info";
 const std::string AddTag = "!add";
 const std::string RemoveTag = "!remove";
 
 bool isListHelper(const YAML::Node &node)
 {
-	return node.IsSequence() == true && (node.Tag() == YamlTagSeq || node.Tag() == YamlTagNonSpecific);
+	return node.IsSequence() == true && (node.Tag() == YamlTagSeq || node.Tag() == YamlTagNonSpecific || node.Tag() == InfoTag);
 }
 
 bool isListAddTagHelper(const YAML::Node &node)
@@ -1042,7 +1011,12 @@ bool isListRemoveTagHelper(const YAML::Node &node)
 
 bool isMapHelper(const YAML::Node &node)
 {
-	return node.IsMap() == true && (node.Tag() == YamlTagMap || node.Tag() == YamlTagNonSpecific);
+	return node.IsMap() == true && (node.Tag() == YamlTagMap || node.Tag() == YamlTagNonSpecific || node.Tag() == InfoTag);
+}
+
+bool isMapAddTagHelper(const YAML::Node &node)
+{
+	return node.IsMap() == true && node.Tag() == AddTag;
 }
 
 void throwOnBadListHelper(const std::string &parent, const YAML::Node &node)
@@ -1050,24 +1024,88 @@ void throwOnBadListHelper(const std::string &parent, const YAML::Node &node)
 	std::ostringstream err;
 	if (node.IsSequence())
 	{
-		//is sequence but still could not be loaded, this mean tag is wrong
+		// it is a sequence, but it could not be loaded... this means the tag is not supported
 		err << "unsupported node tag '" << node.Tag() << "'";
 	}
 	else
 	{
-		err << "wrong node type, expected list";
+		err << "wrong node type, expected a list";
 	}
 	throw LoadRuleException(parent, node, err.str());
 }
 
-template<typename T>
-void loadVectorHelper(const std::string &parent, std::vector<T>& v, const YAML::Node &node)
+void throwOnBadMapHelper(const std::string &parent, const YAML::Node &node)
+{
+	std::ostringstream err;
+	if (node.IsMap())
+	{
+		// it is a map, but it could not be loaded... this means the tag is not supported
+		err << "unsupported node tag '" << node.Tag() << "'";
+	}
+	else
+	{
+		err << "wrong node type, expected a map";
+	}
+	throw LoadRuleException(parent, node, err.str());
+}
+
+template<typename... T>
+void showInfo(const std::string &parent, const YAML::Node &node, T... names)
+{
+	if (node.Tag() == InfoTag)
+	{
+		Logger info;
+		info.get() << "Options available for " << parent << " at line " << node.Mark().line << " are: ";
+		((info.get() << " " << names), ...);
+	}
+}
+
+/**
+ * Tag dispatch struct representing normal load logic.
+ */
+struct LoadFuncStandard
+{
+	auto funcTagForNew() -> LoadFuncStandard { return { }; }
+};
+
+/**
+ * Tag dispatch struct representing special function that allows adding and removing elements.
+ */
+struct LoadFuncEditable
+{
+	auto funcTagForNew() -> LoadFuncStandard { return { }; }
+};
+
+/**
+ * Terminal function loading integer
+ */
+void loadHelper(const std::string &parent, int& v, const YAML::Node &node)
+{
+	v = node.as<int>();
+}
+/**
+ * Terminal function loading string
+ */
+void loadHelper(const std::string &parent, std::string& v, const YAML::Node &node)
+{
+	v = node.as<std::string>();
+}
+
+template<typename T, typename... LoadFuncTag>
+void loadHelper(const std::string &parent, std::vector<T>& v, const YAML::Node &node, LoadFuncStandard, LoadFuncTag... rest)
 {
 	if (node)
 	{
+		showInfo(parent, node, YamlTagSeqShort);
+
 		if (isListHelper(node))
 		{
-			v = node.as< std::vector<T> >();
+			v.clear();
+			v.reserve(node.size());
+			for (const YAML::Node& n : node)
+			{
+				loadHelper(parent, v.emplace_back(), n, rest.funcTagForNew()...);
+			}
 		}
 		else
 		{
@@ -1076,21 +1114,28 @@ void loadVectorHelper(const std::string &parent, std::vector<T>& v, const YAML::
 	}
 }
 
-template<typename T>
-void loadUnorderedVectorHelper(const std::string &parent, std::vector<T>& v, const YAML::Node &node)
+template<typename T, typename... LoadFuncTag>
+void loadHelper(const std::string &parent, std::vector<T>& v, const YAML::Node &node, LoadFuncEditable, LoadFuncTag... rest)
 {
 	if (node)
 	{
+		showInfo(parent, node, YamlTagSeqShort, AddTag, RemoveTag);
+
 		if (isListHelper(node))
 		{
-			v = node.as< std::vector<T> >();
+			v.clear();
+			v.reserve(node.size());
+			for (const YAML::Node& n : node)
+			{
+				loadHelper(parent, v.emplace_back(), n, rest.funcTagForNew()...);
+			}
 		}
 		else if (isListAddTagHelper(node))
 		{
 			v.reserve(v.size() + node.size());
 			for (const YAML::Node& n : node)
 			{
-				v.push_back(n.as<T>());
+				loadHelper(parent, v.emplace_back(), n, rest...);
 			}
 		}
 		else if (isListRemoveTagHelper(node))
@@ -1106,6 +1151,70 @@ void loadUnorderedVectorHelper(const std::string &parent, std::vector<T>& v, con
 		else
 		{
 			throwOnBadListHelper(parent, node);
+		}
+	}
+}
+
+template<typename K, typename V, typename... LoadFuncTag>
+void loadHelper(const std::string &parent, std::map<K, V>& v, const YAML::Node &node, LoadFuncStandard, LoadFuncTag... rest)
+{
+	if (node)
+	{
+		showInfo(parent, node, YamlTagMapShort);
+
+		if (isMapHelper(node))
+		{
+			v.clear();
+			for (const std::pair<YAML::Node, YAML::Node>& n : node)
+			{
+				auto key = n.first.as<K>();
+
+				loadHelper(parent, v[key], n.second, rest.funcTagForNew()...);
+			}
+		}
+		else
+		{
+			throwOnBadMapHelper(parent, node);
+		}
+	}
+}
+
+template<typename K, typename V, typename... LoadFuncTag>
+void loadHelper(const std::string &parent, std::map<K, V>& v, const YAML::Node &node, LoadFuncEditable, LoadFuncTag... rest)
+{
+	if (node)
+	{
+		showInfo(parent, node, YamlTagMapShort, AddTag, RemoveTag);
+
+		if (isMapHelper(node))
+		{
+			v.clear();
+			for (const std::pair<YAML::Node, YAML::Node>& n : node)
+			{
+				auto key = n.first.as<K>();
+
+				loadHelper(parent, v[key], n.second, rest.funcTagForNew()...);
+			}
+		}
+		else if (isMapAddTagHelper(node))
+		{
+			for (const std::pair<YAML::Node, YAML::Node>& n : node)
+			{
+				auto key = n.first.as<K>();
+
+				loadHelper(parent, v[key], n.second, rest...);
+			}
+		}
+		else if (isListRemoveTagHelper(node)) // we use a list here as we only need the keys
+		{
+			for (const YAML::Node& n : node)
+			{
+				v.erase(n.as<K>());
+			}
+		}
+		else
+		{
+			throwOnBadMapHelper(parent, node);
 		}
 	}
 }
@@ -1305,7 +1414,7 @@ int Mod::getOffset(int id, int max) const
 /**
  * Load base functions to bit set.
  */
-void Mod::loadBaseFunction(const std::string& parent, std::bitset<128>& f, const YAML::Node& node)
+void Mod::loadBaseFunction(const std::string& parent, RuleBaseFacilityFunctions& f, const YAML::Node& node)
 {
 	if (node)
 	{
@@ -1368,40 +1477,66 @@ std::vector<std::string> Mod::getBaseFunctionNames(RuleBaseFacilityFunctions f) 
 }
 
 /**
- * Gets list of ints.
- * Another mod can only override whole list, no partial edits of it.
+ * Loads a list of ints.
+ * Another mod can only override the whole list, no partial edits allowed.
  */
-void Mod::loadInts(const std::string &parent, std::vector<int>& ints, const YAML::Node &node)
+void Mod::loadInts(const std::string &parent, std::vector<int>& ints, const YAML::Node &node) const
 {
-	loadVectorHelper(parent, ints, node);
+	loadHelper(parent, ints, node, LoadFuncStandard{});
 }
 
 /**
- * Gets list of ints where order do not matter.
- * Another mod can remove or add new values without altering whole list.
+ * Loads a list of ints where order of items does not matter.
+ * Another mod can remove or add new values without altering the whole list.
  */
-void Mod::loadUnorderedInts(const std::string &parent, std::vector<int>& ints, const YAML::Node &node)
+void Mod::loadUnorderedInts(const std::string &parent, std::vector<int>& ints, const YAML::Node &node) const
 {
-	loadUnorderedVectorHelper(parent, ints, node);
+	loadHelper(parent, ints, node, LoadFuncEditable{});
 }
 
 /**
- * Gets list of names.
- * Another mod can only override whole list, no partial edits of it.
+ * Loads a list of names.
+ * Another mod can only override the whole list, no partial edits allowed.
  */
-void Mod::loadNames(const std::string &parent, std::vector<std::string>& names, const YAML::Node &node)
+void Mod::loadNames(const std::string &parent, std::vector<std::string>& names, const YAML::Node &node) const
 {
-	loadVectorHelper(parent, names, node);
+	loadHelper(parent, names, node, LoadFuncStandard{});
 }
 
 /**
- * Gets list of names where order do not matter.
- * Another mod can remove or add new values without altering whole list.
+ * Loads a list of names where order of items does not matter.
+ * Another mod can remove or add new values without altering the whole list.
  */
-void Mod::loadUnorderedNames(const std::string &parent, std::vector<std::string>& names, const YAML::Node &node)
+void Mod::loadUnorderedNames(const std::string &parent, std::vector<std::string>& names, const YAML::Node &node) const
 {
-	loadUnorderedVectorHelper(parent, names, node);
+	loadHelper(parent, names, node, LoadFuncEditable{});
 }
+
+
+/**
+ * Loads a map from names to names.
+ */
+void Mod::loadUnorderedNamesToNames(const std::string &parent, std::map<std::string, std::string>& names, const YAML::Node &node) const
+{
+	loadHelper(parent, names, node, LoadFuncEditable{});
+}
+
+/**
+ * Loads a map from names to ints.
+ */
+void Mod::loadUnorderedNamesToInt(const std::string &parent, std::map<std::string, int>& names, const YAML::Node &node) const
+{
+	loadHelper(parent, names, node, LoadFuncEditable{});
+}
+
+/**
+ * Loads a map from names to names to int.
+ */
+void Mod::loadUnorderedNamesToNamesToInt(const std::string &parent, std::map<std::string, std::map<std::string, int>>& names, const YAML::Node &node) const
+{
+	loadHelper(parent, names, node, LoadFuncEditable{}, LoadFuncEditable{});
+}
+
 
 
 template<typename T>
@@ -1594,6 +1729,8 @@ void Mod::loadAll()
 		}
 	}
 
+	// cross link rule objects
+
 	afterLoadHelper("research", this, _research, &RuleResearch::afterLoad);
 	afterLoadHelper("items", this, _items, &RuleItem::afterLoad);
 	afterLoadHelper("manufacture", this, _manufacture, &RuleManufacture::afterLoad);
@@ -1604,6 +1741,44 @@ void Mod::loadAll()
 	afterLoadHelper("enviroEffects", this, _enviroEffects, &RuleEnviroEffects::afterLoad);
 	afterLoadHelper("commendations", this, _commendations, &RuleCommendations::afterLoad);
 	afterLoadHelper("skills", this, _skills, &RuleSkill::afterLoad);
+	afterLoadHelper("craftWeapons", this, _craftWeapons, &RuleCraftWeapon::afterLoad);
+
+	for (auto& a : _armors)
+	{
+		if (a.second->hasInfiniteSupply())
+		{
+			_armorsForSoldiersCache.push_back(a.second);
+		}
+		else if (a.second->getStoreItem())
+		{
+			_armorsForSoldiersCache.push_back(a.second);
+			_armorStorageItemsCache.push_back(a.second->getStoreItem());
+		}
+	}
+	//_armorsForSoldiersCache sorted in sortList()
+	Collections::sortVector(_armorStorageItemsCache);
+	Collections::sortVectorMakeUnique(_armorStorageItemsCache);
+
+
+	for (auto& c : _craftWeapons)
+	{
+		const RuleItem* item = nullptr;
+
+		item = c.second->getLauncherItem();
+		if (item)
+		{
+			_craftWeaponStorageItemsCache.push_back(item);
+		}
+
+		item = c.second->getClipItem();
+		if (item)
+		{
+			_craftWeaponStorageItemsCache.push_back(item);
+		}
+	}
+	Collections::sortVector(_craftWeaponStorageItemsCache);
+	Collections::sortVectorMakeUnique(_craftWeaponStorageItemsCache);
+
 
 	// check unique listOrder
 	{
@@ -1649,6 +1824,8 @@ void Mod::loadAll()
 	// recommended user options
 	if (!_recommendedUserOptions.empty() && !Options::oxceRecommendedOptionsWereSet)
 	{
+		_recommendedUserOptions.erase("maximizeInfoScreens"); // FIXME: make proper categorisations in the next release
+
 		const std::vector<OptionInfo> &options = Options::getOptionInfo();
 		for (std::vector<OptionInfo>::const_iterator i = options.begin(); i != options.end(); ++i)
 		{
@@ -1666,6 +1843,7 @@ void Mod::loadAll()
 	if (!_fixedUserOptions.empty())
 	{
 		_fixedUserOptions.erase("oxceUpdateCheck");
+		_fixedUserOptions.erase("maximizeInfoScreens"); // FIXME: make proper categorisations in the next release
 
 		const std::vector<OptionInfo> &options = Options::getOptionInfo();
 		for (std::vector<OptionInfo>::const_iterator i = options.begin(); i != options.end(); ++i)
@@ -2005,7 +2183,7 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 		RuleEnviroEffects* rule = loadRule(*i, &_enviroEffects, &_enviroEffectsIndex);
 		if (rule != 0)
 		{
-			rule->load(*i);
+			rule->load(*i, this);
 		}
 	}
 	for (YAML::const_iterator i = doc["startingConditions"].begin(); i != doc["startingConditions"].end(); ++i)
@@ -2323,6 +2501,7 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 
 	_defeatScore = doc["defeatScore"].as<int>(_defeatScore);
 	_defeatFunds = doc["defeatFunds"].as<int>(_defeatFunds);
+	_difficultyDemigod = doc["difficultyDemigod"].as<bool>(_difficultyDemigod);
 
 	if (doc["difficultyCoefficient"])
 	{
@@ -2331,15 +2510,6 @@ void Mod::loadFile(const FileMap::FileRecord &filerec, ModScript &parsers)
 		{
 			DIFFICULTY_COEFFICIENT[num] = (*i).as<int>(DIFFICULTY_COEFFICIENT[num]);
 			_statAdjustment[num].growthMultiplier = DIFFICULTY_COEFFICIENT[num];
-			++num;
-		}
-	}
-	if (doc["difficultyBasedRetaliationDelay"])
-	{
-		size_t num = 0;
-		for (YAML::const_iterator i = doc["difficultyBasedRetaliationDelay"].begin(); i != doc["difficultyBasedRetaliationDelay"].end() && num < MaxDifficultyLevels; ++i)
-		{
-			DIFFICULTY_BASED_RETAL_DELAY[num] = (*i).as<int>(DIFFICULTY_BASED_RETAL_DELAY[num]);
 			++num;
 		}
 	}
@@ -2944,6 +3114,13 @@ const std::vector<std::string> &Mod::getCraftWeaponsList() const
 {
 	return _craftWeaponsIndex;
 }
+/**
+ * Is given item a launcher or ammo for craft weapon.
+ */
+bool Mod::isCraftWeaponStorageItem(const RuleItem* item) const
+{
+	return Collections::sortVectorHave(_craftWeaponStorageItemsCache, item);
+}
 
 /**
 * Returns the rules for the specified item category.
@@ -3191,6 +3368,7 @@ const std::vector<std::string> &Mod::getDeploymentsList() const
 	return _deploymentsIndex;
 }
 
+
 /**
  * Returns the info about a specific armor.
  * @param name Armor name.
@@ -3210,6 +3388,23 @@ const std::vector<std::string> &Mod::getArmorsList() const
 {
 	return _armorsIndex;
 }
+
+/**
+ * Gets the available armors for soldiers.
+ */
+const std::vector<const Armor*> &Mod::getArmorsForSoldiers() const
+{
+	return _armorsForSoldiersCache;
+}
+
+/**
+ * Check if item is used for armor storage.
+ */
+bool Mod::isArmorStorageItem(const RuleItem* item) const
+{
+	return Collections::sortVectorHave(_armorStorageItemsCache, item);
+}
+
 
 /**
  * Returns the hiring cost of an individual engineer.
@@ -3680,8 +3875,8 @@ struct compareRule<RuleCraftWeapon>
 
 	bool operator()(const std::string &r1, const std::string &r2) const
 	{
-		RuleItem *rule1 = _mod->getItem(_mod->getCraftWeapon(r1)->getLauncherItem(), true);
-		RuleItem *rule2 = _mod->getItem(_mod->getCraftWeapon(r2)->getLauncherItem(), true);
+		auto *rule1 = _mod->getCraftWeapon(r1)->getLauncherItem();
+		auto *rule2 = _mod->getCraftWeapon(r2)->getLauncherItem();
 		return (rule1->getListOrder() < rule2->getListOrder());
 	}
 };
@@ -3707,6 +3902,11 @@ struct compareRule<Armor>
 	{
 		Armor* armor1 = _mod->getArmor(r1);
 		Armor* armor2 = _mod->getArmor(r2);
+		return operator()(armor1, armor2);
+	}
+
+	bool operator()(const Armor* armor1, const Armor* armor2) const
+	{
 		const RuleItem *rule1 = armor1->getStoreItem();
 		const RuleItem *rule2 = armor2->getStoreItem();
 		if (!rule1 && !rule2)
@@ -3803,6 +4003,7 @@ void Mod::sortLists()
 	// special cases
 	std::sort(_craftWeaponsIndex.begin(), _craftWeaponsIndex.end(), compareRule<RuleCraftWeapon>(this));
 	std::sort(_armorsIndex.begin(), _armorsIndex.end(), compareRule<Armor>(this));
+	std::sort(_armorsForSoldiersCache.begin(), _armorsForSoldiersCache.end(), compareRule<Armor>(this));
 	_ufopaediaSections[UFOPAEDIA_NOT_AVAILABLE] = 0;
 	std::sort(_ufopaediaIndex.begin(), _ufopaediaIndex.end(), compareRule<ArticleDefinition>(this));
 	std::sort(_ufopaediaCatIndex.begin(), _ufopaediaCatIndex.end(), compareSection(this));
@@ -4835,18 +5036,21 @@ void Mod::loadExtraResources()
 		}
 	}
 
-	for (std::vector< std::pair<std::string, ExtraSounds *> >::const_iterator i = _extraSounds.begin(); i != _extraSounds.end(); ++i)
+	if (!Options::mute)
 	{
-		std::string setName = i->first;
-		ExtraSounds *soundPack = i->second;
-		SoundSet *set = 0;
-
-		std::map<std::string, SoundSet*>::iterator j = _sounds.find(setName);
-		if (j != _sounds.end())
+		for (std::vector< std::pair<std::string, ExtraSounds *> >::const_iterator i = _extraSounds.begin(); i != _extraSounds.end(); ++i)
 		{
-			set = j->second;
+			std::string setName = i->first;
+			ExtraSounds *soundPack = i->second;
+			SoundSet *set = 0;
+
+			std::map<std::string, SoundSet*>::iterator j = _sounds.find(setName);
+			if (j != _sounds.end())
+			{
+				set = j->second;
+			}
+			_sounds[setName] = soundPack->loadSoundSet(set);
 		}
-		_sounds[setName] = soundPack->loadSoundSet(set);
 	}
 
 	Log(LOG_INFO) << "Loading custom palettes from ruleset...";
@@ -5246,6 +5450,16 @@ int Mod::getDefeatScore() const
 int Mod::getDefeatFunds() const
 {
 	return _defeatFunds;
+}
+
+/**
+ * Enables non-vanilla difficulty features.
+ * Dehumanize yourself and face the Warboy.
+ * @return Is the player screwed?
+*/
+bool Mod::isDemigod() const
+{
+	return _difficultyDemigod;
 }
 
 

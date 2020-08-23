@@ -2746,14 +2746,14 @@ bool BattleUnit::addItem(BattleItem *item, const Mod *mod, bool allowSecondClip,
 			keep = (getFaction() != FACTION_PLAYER);
 			if (rightWeapon)
 			{
-				if (rightWeapon->getRules()->getSlotForAmmo(rule->getType()) != -1)
+				if (rightWeapon->getRules()->getSlotForAmmo(rule) != -1)
 				{
 					keep = true;
 				}
 			}
 			if (leftWeapon)
 			{
-				if (leftWeapon->getRules()->getSlotForAmmo(rule->getType()) != -1)
+				if (leftWeapon->getRules()->getSlotForAmmo(rule) != -1)
 				{
 					keep = true;
 				}
@@ -3214,7 +3214,7 @@ bool BattleUnit::reloadAmmo()
 
 		for (BattleItem* bi : *getInventory())
 		{
-			int slot = ruleWeapon->getSlotForAmmo(bi->getRules()->getType());
+			int slot = ruleWeapon->getSlotForAmmo(bi->getRules());
 			if (slot != -1)
 			{
 				int tuTemp = (Mod::EXTENDED_ITEM_RELOAD_COST && bi->getSlot()->getType() != INV_HAND) ? bi->getSlot()->getCost(weapon->getSlot()) : 0;
@@ -3342,7 +3342,7 @@ bool BattleUnit::isInExitArea(SpecialTileType stt) const
  */
 bool BattleUnit::liesInExitArea(Tile *tile, SpecialTileType stt) const
 {
-	return tile && tile->getMapData(O_FLOOR) && (tile->getMapData(O_FLOOR)->getSpecialType() == stt);
+	return tile && tile->getFloorSpecialTileType() == stt;
 }
 
 /**
@@ -3403,11 +3403,18 @@ void BattleUnit::addPsiStrengthExp()
 }
 
 /**
- * Adds one to the mana exp counter.
+ * Adds to the mana exp counter.
  */
-void BattleUnit::addManaExp()
+void BattleUnit::addManaExp(int weaponStat)
 {
-	_exp.mana++;
+	if (weaponStat > 0)
+	{
+		_exp.mana += weaponStat / 100;
+		if (RNG::percent(weaponStat % 100))
+		{
+			_exp.mana++;
+		}
+	}
 }
 
 /**
@@ -4496,6 +4503,14 @@ void BattleUnit::calculateEnviDamage(Mod *mod, SavedBattleGame *save)
 MovementType BattleUnit::getMovementType() const
 {
 	return _movementType;
+}
+
+/**
+ * Gets the turn cost.
+ */
+int BattleUnit::getTurnCost() const
+{
+	return _armor->getTurnCost();
 }
 
 /**

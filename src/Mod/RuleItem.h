@@ -318,7 +318,8 @@ private:
 	bool _hidePower;
 	float _powerRangeReduction;
 	float _powerRangeThreshold;
-	std::vector<std::string> _compatibleAmmo[AmmoSlotMax];
+	std::vector<std::vector<std::string>> _compatibleAmmoNames = std::vector<std::vector<std::string>>(AmmoSlotMax);
+	std::vector<const RuleItem*> _compatibleAmmo[AmmoSlotMax];
 	RuleDamageType _damageType, _meleeType;
 	RuleItemAction _confAimed, _confAuto, _confSnap, _confMelee;
 	int _accuracyUse, _accuracyMind, _accuracyPanic, _accuracyThrow, _accuracyCloseQuarters;
@@ -630,12 +631,18 @@ public:
 	int getTULoad(int slot) const;
 	/// Gets the item's unload TU cost.
 	int getTUUnload(int slot) const;
+	/// Gets the ammo type for a vehicle.
+	const RuleItem* getVehicleClipAmmo() const;
+	/// Gets the maximum number of rounds for a vehicle. E.g. a vehicle that can load 6 clips with 10 rounds each, returns 60.
+	int getVehicleClipSize() const;
+	/// Gets the number of clips needed to fully load a vehicle. E.g. a vehicle that holds max 60 rounds and clip size is 10, returns 6.
+	int getVehicleClipsLoaded() const;
 	/// Gets list of compatible ammo.
-	const std::vector<std::string> *getPrimaryCompatibleAmmo() const;
+	const std::vector<const RuleItem*> *getPrimaryCompatibleAmmo() const;
 	/// Get slot position for ammo type.
-	int getSlotForAmmo(const std::string &type) const;
+	int getSlotForAmmo(const RuleItem* type) const;
 	/// Get slot position for ammo type.
-	const std::vector<std::string> *getCompatibleAmmoForSlot(int slot) const;
+	const std::vector<const RuleItem*> *getCompatibleAmmoForSlot(int slot) const;
 
 	/// Gets the item's damage type.
 	const RuleDamageType *getDamageType() const;

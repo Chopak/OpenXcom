@@ -61,8 +61,8 @@ const std::string Armor::NONE = "STR_NONE";
  * @param type String defining the type.
  */
 Armor::Armor(const std::string &type) :
-	_type(type), _frontArmor(0), _sideArmor(0), _leftArmorDiff(0), _rearArmor(0), _underArmor(0),
-	_drawingRoutine(0), _drawBubbles(false), _movementType(MT_WALK), _moveSound(-1), _size(1), _weight(0),
+	_type(type), _infiniteSupply(false), _frontArmor(0), _sideArmor(0), _leftArmorDiff(0), _rearArmor(0), _underArmor(0),
+	_drawingRoutine(0), _drawBubbles(false), _movementType(MT_WALK), _turnBeforeFirstStep(false), _turnCost(1), _moveSound(-1), _size(1), _weight(0),
 	_visibilityAtDark(0), _visibilityAtDay(0), _personalLight(15),
 	_camouflageAtDay(0), _camouflageAtDark(0), _antiCamouflageAtDay(0), _antiCamouflageAtDark(0), _heatVision(0), _psiVision(0),
 	_deathFrames(3), _constantAnimation(false), _canHoldWeapon(false), _hasInventory(true), _forcedTorso(TORSO_USE_GENDER),
@@ -136,6 +136,9 @@ void Armor::load(const YAML::Node &node, const ModScript &parsers, Mod *mod)
 	_drawingRoutine = node["drawingRoutine"].as<int>(_drawingRoutine);
 	_drawBubbles = node["drawBubbles"].as<bool>(_drawBubbles);
 	_movementType = (MovementType)node["movementType"].as<int>(_movementType);
+
+	_turnBeforeFirstStep = node["turnBeforeFirstStep"].as<bool>(_turnBeforeFirstStep);
+	_turnCost = node["turnCost"].as<int>(_turnCost);
 
 	mod->loadSoundOffset(_type, _moveSound, node["moveSound"], "BATTLE.CAT");
 	mod->loadSoundOffset(_type, _deathSoundMale, node["deathMale"], "BATTLE.CAT");
@@ -259,6 +262,10 @@ void Armor::afterLoad(const Mod* mod)
 	mod->linkRule(_builtInWeapons, _builtInWeaponsNames);
 	mod->linkRule(_units, _unitsNames);
 	mod->linkRule(_requires, _requiresName);
+	if (_storeItemName == Armor::NONE)
+	{
+		_infiniteSupply = true;
+	}
 	mod->linkRule(_storeItem, _storeItemName); //special logic there: "STR_NONE" -> nullptr
 	mod->linkRule(_specWeapon, _specWeaponName);
 
@@ -267,23 +274,23 @@ void Armor::afterLoad(const Mod* mod)
 	{
 		if (_corpseBattle.size() != 0)
 		{
-			throw Exception("Number of battle corpse items do not match armor size");
+			throw Exception("Number of battle corpse items does not match the armor size.");
 		}
 		else
 		{
-			throw Exception("Missed missing battle corpse item");
+			throw Exception("Missing battle corpse item(s).");
 		}
 	}
 	for (auto& c : _corpseBattle)
 	{
 		if (!c)
 		{
-			throw Exception("Missed some battle corpse item defintion");
+			throw Exception("Battle corpse item(s) cannot be empty.");
 		}
 	}
 	if (!_corpseGeo)
 	{
-		throw Exception("Missed geo corpse item defintion");
+		throw Exception("Geo corpse item cannot be empty.");
 	}
 
 	Collections::sortVector(_units);
@@ -922,7 +929,7 @@ const std::vector<const RuleSoldier*> &Armor::getUnits() const
 }
 
 /**
- * Check if soldier can use this armor.
+ * Check if a soldier can use this armor.
  */
 bool Armor::getCanBeUsedBy(const RuleSoldier* soldier) const
 {
