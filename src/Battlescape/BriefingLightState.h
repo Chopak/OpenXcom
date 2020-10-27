@@ -26,7 +26,6 @@ class TextButton;
 class ToggleTextButton;
 class Window;
 class Text;
-class TextList;
 class AlienDeployment;
 
 /**
@@ -40,9 +39,8 @@ private:
 	ToggleTextButton *_btnArmors;
 	Window *_window;
 	Text *_txtTitle, *_txtBriefing, *_txtArmors;
-	TextList* _lstArmors;
 	// Checks the starting condition
-	void checkStartingCondition(AlienDeployment *deployment);
+	std::string checkStartingCondition(AlienDeployment *deployment);
 public:
 	/// Creates the BriefingLight state.
 	BriefingLightState(AlienDeployment *deployment);

@@ -38,6 +38,5 @@ namespace OpenXcom
 		Text *_txtTuCost;
 		Text *_txtAmmoType[3];
 		Text *_txtAmmoDamage[3];
-		Text *_txtArrows;
 	};
 }

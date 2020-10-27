@@ -746,7 +746,7 @@ void InventoryState::btnArmorClickMiddle(Action *action)
 	BattleUnit *unit = _inv->getSelectedUnit();
 	if (unit != 0)
 	{
-		std::string articleId = unit->getArmor()->getUfopediaType();
+		std::string articleId = unit->getArmor()->getType();
 		Ufopaedia::openArticle(_game, articleId);
 	}
 }

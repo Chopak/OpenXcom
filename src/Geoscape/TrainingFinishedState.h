@@ -42,10 +42,9 @@ private:
 	TextList * _lstPossibilities;
 	TextButton *_btnOpen, *_btnOk;
 	Base *_base;
-	bool _psi;
 public:
 	/// Creates the TrainingFinishedState state.
-	TrainingFinishedState(Base *base, const std::vector<Soldier *> & list, bool psi);
+	TrainingFinishedState(Base *base, const std::vector<Soldier *> & list);
 	/// Handler for clicking the OK button.
 	void btnOkClick(Action *action);
 	/// Handler for clicking the Open button.

@@ -80,16 +80,6 @@ AIModule::~AIModule()
 }
 
 /**
- * Resets the unsaved AI state.
- */
-void AIModule::reset()
-{
-	// these variables are not saved in save() and also not initiated in think()
-	_escapeTUs = 0;
-	_ambushTUs = 0;
-}
-
-/**
  * Loads the AI state from a YAML file.
  * @param node YAML node.
  */
@@ -1536,10 +1526,10 @@ int AIModule::scoreFiringMode(BattleAction *action, BattleUnit *target, bool che
 		Position origin = _save->getTileEngine()->getOriginVoxel((*action), 0);
 		Position targetPosition;
 
-		if (action->weapon->getArcingShot(action->type) || action->type == BA_THROW)
+		if (action->weapon->getRules()->getArcingShot() || action->type == BA_THROW)
 		{
 			targetPosition = target->getPosition().toVoxel() + Position (8,8, (2 + -target->getTile()->getTerrainLevel()));
-			if (!_save->getTileEngine()->validateThrow((*action), origin, targetPosition, _save->getDepth()))
+			if (!_save->getTileEngine()->validateThrow((*action), origin, targetPosition))
 			{
 				return 0;
 			}
@@ -2216,17 +2206,10 @@ void AIModule::projectileAction()
 		if (cost.haveTU())
 		{
 			auto attack = BattleActionAttack::GetBeforeShoot(cost);
-			if (attack.damage_item == nullptr)
+			int radius = attack.damage_item->getRules()->getExplosionRadius(attack);
+			if (radius != 0 && explosiveEfficacy(_attackAction->target, _unit, radius, _attackAction->diff) == 0)
 			{
 				cost.clearTU();
-			}
-			else
-			{
-				int radius = attack.damage_item->getRules()->getExplosionRadius(attack);
-				if (radius != 0 && explosiveEfficacy(_attackAction->target, _unit, radius, _attackAction->diff) == 0)
-				{
-					cost.clearTU();
-				}
 			}
 		}
 	};
@@ -2381,7 +2364,7 @@ void AIModule::extendedFireModeChoice(BattleActionCost& costAuto, BattleActionCo
 
 		if (_traceAI)
 		{
-			Log(LOG_INFO) << "Evaluate option " << (int)i << ", score = " << newScore;
+			Log(LOG_INFO) << "Evaluate option " << i << ", score = " << newScore;
 		}
 	}
 
@@ -2418,7 +2401,7 @@ void AIModule::grenadeAction()
 		Position originVoxel = _save->getTileEngine()->getOriginVoxel(action, 0);
 		Position targetVoxel = action.target.toVoxel() + Position (8,8, (2 + -_save->getTile(action.target)->getTerrainLevel()));
 		// are we within range?
-		if (_save->getTileEngine()->validateThrow(action, originVoxel, targetVoxel, _save->getDepth()))
+		if (_save->getTileEngine()->validateThrow(action, originVoxel, targetVoxel))
 		{
 			_attackAction->weapon = grenade;
 			_attackAction->target = action.target;

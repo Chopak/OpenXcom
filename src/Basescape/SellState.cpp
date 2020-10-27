@@ -65,26 +65,8 @@ namespace OpenXcom
  * @param base Pointer to the base to get info from.
  * @param origin Game section that originated this state.
  */
-SellState::SellState(Base *base, DebriefingState *debriefingState, OptionsOrigin origin) : _base(base), _debriefingState(debriefingState), _sel(0), _total(0), _spaceChange(0), _origin(origin),
-	_reset(false), _sellAllButOne(false), _delayedInitDone(false)
+SellState::SellState(Base *base, DebriefingState *debriefingState, OptionsOrigin origin) : _base(base), _debriefingState(debriefingState), _sel(0), _total(0), _spaceChange(0), _origin(origin), _reset(false), _sellAllButOne(false)
 {
-	_timerInc = new Timer(250);
-	_timerInc->onTimer((StateHandler)&SellState::increase);
-	_timerDec = new Timer(250);
-	_timerDec->onTimer((StateHandler)&SellState::decrease);
-}
-
-/**
- * Delayed constructor functionality.
- */
-void SellState::delayedInit()
-{
-	if (_delayedInitDone)
-	{
-		return;
-	}
-	_delayedInitDone = true;
-
 	bool overfull = _debriefingState == 0 && Options::storageLimitsEnforced && _base->storesOverfull();
 	bool overfullCritical = overfull ? _base->storesOverfullCritical() : false;
 
@@ -277,8 +259,7 @@ void SellState::delayedInit()
 		}
 	}
 
-	_vanillaCategories = _cats.size();
-	if (_game->getMod()->getDisplayCustomCategories() > 0)
+	if (_game->getMod()->getUseCustomCategories())
 	{
 		bool hasUnassigned = false;
 
@@ -303,12 +284,8 @@ void SellState::delayedInit()
 			}
 		}
 		// then use them nicely in order
-		if (_game->getMod()->getDisplayCustomCategories() == 1)
-		{
-			_cats.clear();
-			_cats.push_back("STR_ALL_ITEMS");
-			_vanillaCategories = _cats.size();
-		}
+		_cats.clear();
+		_cats.push_back("STR_ALL_ITEMS");
 		const std::vector<std::string> &categories = _game->getMod()->getItemCategoriesList();
 		for (std::vector<std::string>::const_iterator k = categories.begin(); k != categories.end(); ++k)
 		{
@@ -338,6 +315,11 @@ void SellState::delayedInit()
 	_cbxCategory->onKeyboardRelease((ActionHandler)&SellState::btnQuickSearchToggle, Options::keyToggleQuickSearch);
 
 	updateList();
+
+	_timerInc = new Timer(250);
+	_timerInc->onTimer((StateHandler)&SellState::increase);
+	_timerDec = new Timer(250);
+	_timerDec->onTimer((StateHandler)&SellState::decrease);
 }
 
 /**
@@ -354,8 +336,6 @@ SellState::~SellState()
 */
 void SellState::init()
 {
-	delayedInit();
-
 	State::init();
 
 	if (_reset)
@@ -396,18 +376,18 @@ std::string SellState::getCategory(int sel) const
 		rule = (RuleItem*)_items[sel].rule;
 		if (rule->getBattleType() == BT_CORPSE || rule->isAlien())
 		{
-			if (rule->getVehicleUnit())
-				return "STR_PERSONNEL"; // OXCE: critters fighting for us
-			if (rule->isAlien())
-				return "STR_PRISONERS"; // OXCE: live aliens
 			return "STR_ALIENS";
 		}
 		if (rule->getBattleType() == BT_NONE)
 		{
 			if (_game->getMod()->isCraftWeaponStorageItem(rule))
+			{
 				return "STR_CRAFT_ARMAMENT";
+			}
 			if (_game->getMod()->isArmorStorageItem(rule))
-				return "STR_ARMORS"; // OXCE: armors
+			{
+				return "STR_EQUIPMENT";
+			}
 			return "STR_COMPONENTS";
 		}
 		return "STR_EQUIPMENT";
@@ -476,15 +456,14 @@ void SellState::updateList()
 	_lstItems->clearList();
 	_rows.clear();
 
-	size_t selCategory = _cbxCategory->getSelected();
-	const std::string selectedCategory = _cats[selCategory];
+	const std::string selectedCategory = _cats[_cbxCategory->getSelected()];
 	bool categoryFilterEnabled = (selectedCategory != "STR_ALL_ITEMS");
 	bool categoryUnassigned = (selectedCategory == "STR_UNASSIGNED");
 
 	for (size_t i = 0; i < _items.size(); ++i)
 	{
 		// filter
-		if (selCategory >= _vanillaCategories)
+		if (_game->getMod()->getUseCustomCategories())
 		{
 			if (categoryUnassigned && _items[i].type == TRANSFER_ITEM)
 			{

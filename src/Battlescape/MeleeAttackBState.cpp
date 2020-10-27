@@ -61,9 +61,6 @@ void MeleeAttackBState::init()
 	if (_initialized) return;
 	_initialized = true;
 
-	int terrainMeleeTilePart = _action.terrainMeleeTilePart;
-	_action.terrainMeleeTilePart = 0; // reset!
-
 	_weapon = _action.weapon;
 	if (!_weapon) // can't hit without weapon
 	{
@@ -118,13 +115,6 @@ void MeleeAttackBState::init()
 		return;
 	}
 
-	// terrain melee
-	if (terrainMeleeTilePart > 0)
-	{
-		_voxel = _action.target.toVoxel() + Position(8, 8, 12);
-		performMeleeAttack(terrainMeleeTilePart);
-		return;
-	}
 
 	AIModule *ai = _unit->getAIModule();
 
@@ -202,10 +192,7 @@ void MeleeAttackBState::think()
 			_parent->getMap()->invalidate();
 		}
 
-		if (_unit->getFaction() == _parent->getSave()->getSide()) // not a reaction attack
-		{
-			_parent->getCurrentAction()->type = BA_NONE; // do this to restore cursor
-		}
+		_parent->getCurrentAction()->type = BA_NONE; // do this to restore cursor
 
 		if (_parent->getSave()->getSide() == FACTION_PLAYER || _parent->getSave()->getDebugMode())
 		{
@@ -219,7 +206,7 @@ void MeleeAttackBState::think()
 /**
  * Sets up a melee attack, inserts an explosion into the map and make noises.
  */
-void MeleeAttackBState::performMeleeAttack(int terrainMeleeTilePart)
+void MeleeAttackBState::performMeleeAttack()
 {
 	// set the soldier in an aiming position
 	_unit->aim(true);
@@ -238,7 +225,7 @@ void MeleeAttackBState::performMeleeAttack(int terrainMeleeTilePart)
 
 
 	// make an explosion action
-	_parent->statePushFront(new ExplosionBState(_parent, damagePosition, BattleActionAttack::GetAferShoot(_action, _ammo), 0, true, 0, 0, terrainMeleeTilePart));
+	_parent->statePushFront(new ExplosionBState(_parent, damagePosition, BattleActionAttack::GetAferShoot(_action, _ammo), 0, true));
 
 
 	_reaction = true;

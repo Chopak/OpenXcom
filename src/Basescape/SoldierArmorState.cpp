@@ -273,8 +273,7 @@ void SoldierArmorState::lstArmorClick(Action *)
 */
 void SoldierArmorState::lstArmorClickMiddle(Action *action)
 {
-	auto armor = _game->getMod()->getArmor(_armors[_lstArmor->getSelectedRow()].type, true);
-	std::string articleId = armor->getUfopediaType();
+	std::string articleId = _armors[_lstArmor->getSelectedRow()].type;
 	Ufopaedia::openArticle(_game, articleId);
 }
 

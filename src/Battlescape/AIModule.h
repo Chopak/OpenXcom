@@ -65,8 +65,6 @@ public:
 	AIModule(SavedBattleGame *save, BattleUnit *unit, Node *node);
 	/// Cleans up the AIModule.
 	~AIModule();
-	/// Resets the unsaved AI state.
-	void reset();
 	/// Loads the AI Module from YAML.
 	void load(const YAML::Node& node);
 	/// Saves the AI Module to YAML.

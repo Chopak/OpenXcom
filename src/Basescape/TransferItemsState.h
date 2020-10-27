@@ -55,7 +55,6 @@ private:
 	std::vector<TransferRow> _items;
 	std::vector<int> _rows;
 	std::vector<std::string> _cats;
-	size_t _vanillaCategories;
 	size_t _sel;
 	int _total, _pQty, _cQty, _aQty;
 	double _iQty;

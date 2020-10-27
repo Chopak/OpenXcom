@@ -1283,31 +1283,31 @@ void StatsForNerdsState::addMediKitTargets(std::ostringstream& ss, const RuleIte
 }
 
 /**
- * Adds item target types to the table.
+ * Adds psiamp target types to the table.
  */
-void StatsForNerdsState::addItemTargets(std::ostringstream& ss, const RuleItem* value, const std::string& propertyName, const int& defaultvalue)
+void StatsForNerdsState::addPsiampTargets(std::ostringstream& ss, const RuleItem* value, const std::string& propertyName, const int& defaultvalue)
 {
-	if (value->getTargetMatrixRaw() == defaultvalue && !_showDefaults)
+	if (value->getPsiTargetMatrixRaw() == defaultvalue && !_showDefaults)
 	{
 		return;
 	}
 	resetStream(ss);
 	ss << "{";
 	// FIXME: make translatable one day, when some better default names are suggested
-	if (value->isTargetAllowed(FACTION_PLAYER))
+	if (value->isPsiTargetAllowed(FACTION_PLAYER))
 		ss << "friend" << ", ";
-	if (value->isTargetAllowed(FACTION_HOSTILE))
+	if (value->isPsiTargetAllowed(FACTION_HOSTILE))
 		ss << "hostile" << ", ";
-	if (value->isTargetAllowed(FACTION_NEUTRAL))
+	if (value->isPsiTargetAllowed(FACTION_NEUTRAL))
 		ss << "neutral" << ", ";
 	ss << "}";
 	if (_showIds)
 	{
-		ss << " [" << value->getTargetMatrixRaw() << "]";
+		ss << " [" << value->getPsiTargetMatrixRaw() << "]";
 	}
 	_lstRawData->addRow(2, trp(propertyName).c_str(), ss.str().c_str());
 	++_counter;
-	if (value->getTargetMatrixRaw() != defaultvalue)
+	if (value->getPsiTargetMatrixRaw() != defaultvalue)
 	{
 		_lstRawData->setCellColor(_lstRawData->getTexts() - 1, 1, _pink);
 	}
@@ -1570,8 +1570,7 @@ void StatsForNerdsState::initItemList()
 	int psiRequiredDefault = itemBattleType == BT_PSIAMP ? true : false;
 	addBoolean(ss, itemRule->isPsiRequired(), "psiRequired", psiRequiredDefault);
 	addBoolean(ss, itemRule->isManaRequired(), "manaRequired");
-	int targetMatrixDefault = itemBattleType == BT_PSIAMP ? 6 : 7;
-	addItemTargets(ss, itemRule, "targetMatrix", targetMatrixDefault);
+	addPsiampTargets(ss, itemRule, "psiTargetMatrix", 6);
 	addBoolean(ss, itemRule->isLOSRequired(), "LOSRequired");
 
 	if (itemBattleType == BT_FIREARM
@@ -1638,8 +1637,6 @@ void StatsForNerdsState::initItemList()
 	}
 
 	addInteger(ss, itemRule->getWeight(), "weight", 3);
-	addInteger(ss, itemRule->getThrowRange(), "throwRange");
-	addInteger(ss, itemRule->getUnderwaterThrowRange(), "underwaterThrowRange");
 
 	addRuleStatBonus(ss, *itemRule->getThrowMultiplierRaw(), "throwMultiplier");
 	addIntegerPercent(ss, itemRule->getAccuracyThrow(), "accuracyThrow", 100);
@@ -2359,7 +2356,6 @@ void StatsForNerdsState::initArmorList()
 
 	addIntegerPercent(ss, armorRule->getHeatVision(), "heatVision");
 	addInteger(ss, armorRule->getPsiVision(), "psiVision");
-	addInteger(ss, armorRule->getPsiCamouflage(), "psiCamouflage");
 
 	addInteger(ss, armorRule->getVisibilityAtDay(), "visibilityAtDay");
 	addInteger(ss, armorRule->getVisibilityAtDark(), "visibilityAtDark");
@@ -2391,7 +2387,6 @@ void StatsForNerdsState::initArmorList()
 
 		addSection("{Naming}", "", _white);
 		addSingleString(ss, armorRule->getType(), "type");
-		addSingleString(ss, armorRule->getUfopediaType(), "ufopediaType");
 		addRuleNamed(ss, armorRule->getRequiredResearch(), "requires");
 
 		addSection("{Recovery}", "", _white);
@@ -2764,7 +2759,6 @@ void StatsForNerdsState::initCraftList()
 	addInteger(ss, craftRule->getPilots(), "pilots");
 	addInteger(ss, craftRule->getVehicles(), "vehicles");
 	addInteger(ss, craftRule->getMaxItems(), "maxItems");
-	addDouble(ss, craftRule->getMaxStorageSpace(), "maxStorageSpace");
 
 	addInteger(ss, craftRule->getMaxAltitude(), "maxAltitude", -1);
 	addInteger(ss, craftRule->getWeapons(), "weapons");
