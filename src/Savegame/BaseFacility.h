@@ -67,8 +67,6 @@ public:
 	BaseAreaSubset getPlacement() const;
 	/// Gets the facility's construction time.
 	int getBuildTime() const;
-	/// Gets the facility's adjusted construction time (i.e. NOT considering upgrades/downgrades).
-	int getAdjustedBuildTime() const;
 	/// Sets the facility's construction time.
 	void setBuildTime(int time);
 	/// Builds up the facility.
@@ -87,8 +85,6 @@ public:
 	bool getIfHadPreviousFacility() const;
 	/// Sets whether this facility was placed over another or was placed by removing another
 	void setIfHadPreviousFacility(bool hadPreviousFacility);
-	/// Is the facility fully built or being upgraded/downgraded?
-	bool isBuiltOrHadPreviousFacility() const;
 };
 
 }

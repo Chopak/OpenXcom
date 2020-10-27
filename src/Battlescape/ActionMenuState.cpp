@@ -296,9 +296,6 @@ void ActionMenuState::btnActionMenuItemClick(Action *action)
 
 void ActionMenuState::handleAction()
 {
-	// reset potential garbage from the previous action
-	_action->terrainMeleeTilePart = 0;
-
 	{
 		const RuleItem *weapon = _action->weapon->getRules();
 		bool newHitLog = false;
@@ -400,9 +397,9 @@ void ActionMenuState::handleAction()
 								{
 									for (int i = 0; i < BODYPART_MAX; ++i)
 									{
-										if (targetUnit->getFatalWound((UnitBodyPart)i))
+										if (targetUnit->getFatalWound(i))
 										{
-											tileEngine->medikitUse(_action, targetUnit, BMA_HEAL, (UnitBodyPart)i);
+											tileEngine->medikitUse(_action, targetUnit, BMA_HEAL, i);
 											tileEngine->medikitRemoveIfEmpty(_action);
 											break;
 										}
@@ -487,10 +484,7 @@ void ActionMenuState::handleAction()
 				_action->actor,
 				0, &_action->target))
 			{
-				if (!_game->getSavedGame()->getSavedBattle()->getTileEngine()->validTerrainMeleeRange(_action))
-				{
-					_action->result = "STR_THERE_IS_NO_ONE_THERE";
-				}
+				_action->result = "STR_THERE_IS_NO_ONE_THERE";
 			}
 			else
 			{

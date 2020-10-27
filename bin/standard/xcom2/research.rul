@@ -648,7 +648,7 @@ research: #done: double check scores and times.
     points: 50
     needItem: true
   - name: STR_XARQUID
-    cost: 0
+    cost: 170
     points: 50
     needItem: true
   - name: STR_DEEP_ONE
@@ -656,11 +656,11 @@ research: #done: double check scores and times.
     points: 50
     needItem: true
   - name: STR_GILLMAN
-    cost: 0
+    cost: 170
     points: 50
     needItem: true
   - name: STR_CALCINITE
-    cost: 0
+    cost: 170
     points: 50
     needItem: true
 

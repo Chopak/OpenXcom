@@ -267,7 +267,6 @@ void AllocateTrainingState::cbxSortByChange(Action *action)
  */
 void AllocateTrainingState::btnOkClick(Action *)
 {
-	// Note: statString updates not necessary
 	_game->popState();
 }
 

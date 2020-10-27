@@ -30,7 +30,6 @@
 #include "Logger.h"
 #include "Exception.h"
 #include "GraphSubset.h"
-#include "Functions.h"
 
 
 namespace OpenXcom
@@ -53,7 +52,7 @@ template<typename, typename...> class ScriptWorker;
 template<typename, typename> struct ScriptTag;
 template<typename, typename> class ScriptValues;
 
-enum RegEnum : Uint16;
+enum RegEnum : Uint8;
 enum RetEnum : Uint8;
 enum class ProgPos : size_t;
 
@@ -311,14 +310,12 @@ inline ArgEnum ArgRegisteType()
 /**
  * Available regs.
  */
-enum RegEnum : Uint16
+enum RegEnum : Uint8
 {
-	RegInvaild = (Uint16)-1,
+	RegInvaild = (Uint8)-1,
 
-	RegStartPos = 0,
+	RegMax = 0*sizeof(int),
 };
-
-static_assert(ScriptMaxReg < RegInvaild, "RegInvaild could be interpreted as correct register");
 
 /**
  * Return value from script operation.
@@ -724,7 +721,7 @@ public:
 	}
 
 	/// Add text to log buffer.
-	void log_buffer_add(FuncRef<std::string()> func);
+	void log_buffer_add(const std::string& s);
 	/// Flush buffer to log file.
 	void log_buffer_flush(ProgPos& p);
 };
@@ -1142,7 +1139,7 @@ class ScriptParserBase
 {
 	ScriptGlobal* _shared;
 	bool _emptyReturn;
-	size_t _regUsedSpace;
+	Uint8 _regUsed;
 	Uint8 _regOutSize;
 	ScriptRef _regOutName[ScriptMaxOut];
 	std::string _name;

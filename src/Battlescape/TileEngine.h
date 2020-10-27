@@ -35,8 +35,6 @@ class RuleSkill;
 struct BattleAction;
 template<typename Tag, typename DataType> struct AreaSubset;
 
-enum UnitBodyPart : int;
-
 /**
  * Define some part of map
  */
@@ -95,7 +93,7 @@ private:
 	std::vector<Uint16> *_voxelData;
 	std::vector<VisibilityBlockCache> _blockVisibility;
 	RuleInventory *_inventorySlotGround;
-	constexpr static int heightFromCenter[11] = {0,-2,+2,-4,+4,-6,+6,-8,+8,-12,+12};
+	static const int heightFromCenter[11];
 	bool _personalLighting;
 	Tile *_cacheTile;
 	Tile *_cacheTileBelow;
@@ -174,7 +172,7 @@ public:
 	/// Handles unit hit.
 	bool hitUnit(BattleActionAttack attack, BattleUnit *target, const Position &relative, int damage, const RuleDamageType *type, bool rangeAtack = true);
 	/// Handles bullet/weapon hits.
-	void hit(BattleActionAttack attack, Position center, int power, const RuleDamageType *type, bool rangeAtack = true, int terrainMeleeTilePart = 0);
+	void hit(BattleActionAttack attack, Position center, int power, const RuleDamageType *type, bool rangeAtack = true);
 	/// Handles explosions.
 	void explode(BattleActionAttack attack, Position center, int power, const RuleDamageType *type, int maxRadius, bool rangeAtack = true);
 	/// Checks if a destroyed tile starts an explosion.
@@ -201,20 +199,16 @@ public:
 	int horizontalBlockage(Tile *startTile, Tile *endTile, ItemDamageType type, bool skipObject = false);
 	/// Checks the vertical blockage of a tile.
 	int verticalBlockage(Tile *startTile, Tile *endTile, ItemDamageType type, bool skipObject = false);
-
 	/// Calculate success rate of psi attack.
 	int psiAttackCalculate(BattleActionAttack::ReadOnly attack, const BattleUnit *victim);
 	/// Attempts a panic or mind control action.
 	bool psiAttack(BattleActionAttack attack, BattleUnit *victim);
-	/// Calculate success rate of melee attack action.
-	int meleeAttackCalculate(BattleActionAttack::ReadOnly attack, const BattleUnit *victim);
 	/// Attempts a melee attack action.
-	bool meleeAttack(BattleActionAttack attack, BattleUnit *victim, int terrainMeleeTilePart = 0);
-
+	bool meleeAttack(BattleActionAttack attack, BattleUnit *victim);
 	/// Remove the medikit from the game if consumable and empty.
 	void medikitRemoveIfEmpty(BattleAction *action);
 	/// Try using medikit heal ability.
-	bool medikitUse(BattleAction *action, BattleUnit *target, BattleMediKitAction medikitAction, UnitBodyPart bodyPart);
+	bool medikitUse(BattleAction *action, BattleUnit *target, BattleMediKitAction medikitAction, int bodyPart);
 	/// Try using a skill.
 	bool skillUse(BattleAction *action, const RuleSkill *skill);
 	/// Try to conceal a unit.
@@ -240,7 +234,6 @@ public:
 	bool validMeleeRange(BattleUnit *attacker, BattleUnit *target, int dir);
 	/// Returns validity of a melee attack from a given position.
 	bool validMeleeRange(Position pos, int direction, BattleUnit *attacker, BattleUnit *target, Position *dest, bool preferEnemy = true);
-	bool validTerrainMeleeRange(BattleAction* action);
 	/// Gets the AI to look through a window.
 	int faceWindow(Position position);
 	/// Checks a unit's % exposure on a tile.
@@ -260,7 +253,7 @@ public:
 	/// Blows this tile up.
 	bool detonate(Tile* tile, int power);
 	/// Validates a throwing action.
-	bool validateThrow(BattleAction &action, Position originVoxel, Position targetVoxel, int depth, double *curve = 0, int *voxelType = 0, bool forced = false);
+	bool validateThrow(BattleAction &action, Position originVoxel, Position targetVoxel, double *curve = 0, int *voxelType = 0, bool forced = false);
 	/// Opens any doors this door is connected to.
 	std::pair<int, Position> checkAdjacentDoors(Position pos, TilePart part);
 	/// Recalculates FOV of all units in-game.

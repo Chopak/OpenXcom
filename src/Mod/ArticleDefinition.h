@@ -300,7 +300,6 @@ namespace OpenXcom
 		/// Loads the article from YAML.
 		void load(const YAML::Node& node, int listOrder) override;
 
-		std::string image_id;
 	};
 
 	/**
