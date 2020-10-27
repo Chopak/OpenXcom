@@ -572,7 +572,7 @@ BattlescapeState::BattlescapeState() :
 	if (_save->getGlobalShade() > Options::oxceAutoNightVisionThreshold)
 	{
 		// turn personal lights off
-		_save->getTileEngine()->togglePersonalLighting();
+		//_save->getTileEngine()->togglePersonalLighting();
 		// turn night vision on
 		_map->toggleNightVision();
 	}
@@ -2379,9 +2379,9 @@ void BattlescapeState::blinkHealthBar()
 
 	if (++color > maxcolor) color = maxcolor - 3;
 
-	for (int i = 0; i < 6; i++)
+	for (int i = 0; i < BODYPART_MAX; i++)
 	{
-		if (bu->getFatalWound(i) > 0)
+		if (bu->getFatalWound((UnitBodyPart)i) > 0)
 		{
 			_barHealth->setColor(_barHealthColor + color);
 			return;
