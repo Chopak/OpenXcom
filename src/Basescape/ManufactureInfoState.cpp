@@ -526,9 +526,14 @@ void ManufactureInfoState::lessUnit(int change)
 {
 	if (change <= 0) return;
 	int units = _production->getAmountTotal();
-	change = std::min(units-(_production->getAmountProduced()+1), change);
-	_production->setAmountTotal(units-change);
-	setAssignedEngineer();
+	if (units <= 1){
+		_production->setInfiniteAmount(true);
+		setAssignedEngineer();
+	} else {
+		change = std::min(units - (_production->getAmountProduced() + 1), change);
+		_production->setAmountTotal(units - change);
+		setAssignedEngineer();
+	}
 }
 
 /**
