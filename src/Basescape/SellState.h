@@ -72,6 +72,12 @@ private:
 	bool belongsToCategory(int sel, const std::string &cat) const;
 	/// Gets the row of the current selection.
 	TransferRow &getRow() { return _items[_rows[_sel]]; }
+#ifdef __MOBILE__
+		/// Timer for handling long presses as right clicks
+		Timer *_longPressTimer;
+		/// Click guard for state transitions
+		bool _clickGuard;
+#endif
 public:
 	/// Creates the Sell state.
 	SellState(Base *base, DebriefingState *debriefingState, OptionsOrigin origin = OPT_GEOSCAPE);
@@ -123,6 +129,12 @@ public:
 	void updateItemStrings();
 	/// Handler for changing the category filter.
 	void cbxCategoryChange(Action *action);
+#ifdef __MOBILE__
+	/// Handler for mouse releases
+	void lstItemsMouseRelease(Action *action);
+	/// Handler for long presses
+	void lstItemsLongPress();
+#endif
 };
 
 }
