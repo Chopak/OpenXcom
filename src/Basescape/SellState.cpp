@@ -79,7 +79,6 @@ SellState::SellState(Base *base, DebriefingState *debriefingState, OptionsOrigin
 #ifdef __MOBILE__
 	_longPressTimer = new Timer(Options::longPressDuration, false);
 	_longPressTimer->onTimer((StateHandler)&SellState::lstItemsLongPress);
-	_lstItems->onMouseRelease((ActionHandler)&SellState::lstItemsMouseRelease);
 #endif
 }
 
@@ -186,6 +185,11 @@ void SellState::delayedInit()
 	_lstItems->onRightArrowClick((ActionHandler)&SellState::lstItemsRightArrowClick);
 	_lstItems->onMousePress((ActionHandler)&SellState::lstItemsMousePress);
 	_lstItems->onMouseWheel((ActionHandler)&SellState::lstItemsMouseWheel);
+#ifdef __MOBILE__
+	_lstItems->onMouseRelease((ActionHandler)&SellState::lstItemsMouseRelease);
+#endif
+
+
 
 	_cats.push_back("STR_ALL_ITEMS");
 
